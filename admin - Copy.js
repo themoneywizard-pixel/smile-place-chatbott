@@ -1,298 +1,298 @@
-.container {
-  min-height: 100vh;
-  background: #0f172a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: "Sarabun", "Noto Sans Thai", sans-serif;
-  padding: 1rem;
-}
+"use client";
+import { useState, useEffect } from "react";
+import styles from "./admin.module.css";
 
-.widget {
-  width: 100%;
-  max-width: 420px;
-  background: #1a2342;
-  border-radius: 1.5rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(2, 132, 199, 0.2);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  height: min(680px, 90vh);
-}
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-/* Header */
-.header {
-  background: linear-gradient(135deg, #0284c7, #0ea5e9);
-  padding: 1.125rem 1.25rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
+export default function AdminPanel() {
+  const [clinicData, setClinicData] = useState({
+    clinic_name: "",
+    assistant_name: "",
+    address: "",
+    business_hours: "",
+    phone: "",
+  });
 
-.avatar {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.375rem;
-  flex-shrink: 0;
-}
+  const [services, setServices] = useState([]);
+  const [newService, setNewService] = useState({ service_name: "", price: "" });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-.headerInfo {
-  flex: 1;
-}
+  // Fetch clinic data
+  useEffect(() => {
+    fetchClinicData();
+  }, []);
 
-.headerTitle {
-  color: white;
-  font-weight: 700;
-  font-size: 0.9375rem;
-}
+  const fetchClinicData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/clinic_config?select=*`,
+        {
+          headers: {
+            apikey: SUPABASE_KEY,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-.headerSubtitle {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.75rem;
-  margin-top: 0.125rem;
-}
+      if (!res.ok) throw new Error("Failed to fetch clinic data");
 
-.onlineDot {
-  width: 0.625rem;
-  height: 0.625rem;
-  background: #4ade80;
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.3);
-}
+      const data = await res.json();
+      if (data.length > 0) {
+        setClinicData(data[0]);
+      }
 
-/* Messages */
-.messagesContainer {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  background: #1a2342;
-}
+      // Fetch services
+      const servicesRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/clinic_services?select=*&order=display_order`,
+        {
+          headers: {
+            apikey: SUPABASE_KEY,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-.messageWrapper {
-  display: flex;
-  animation: fadeSlideUp 0.3s ease;
-}
+      if (servicesRes.ok) {
+        const servicesData = await servicesRes.json();
+        setServices(servicesData);
+      }
 
-.userWrapper {
-  justify-content: flex-end;
-}
+      setLoading(false);
+    } catch (err) {
+      setError("ไม่สามารถโหลดข้อมูลได้");
+      setLoading(false);
+    }
+  };
 
-.assistantWrapper {
-  justify-content: flex-start;
-  align-items: flex-start;
-}
+  const handleClinicDataChange = (field, value) => {
+    setClinicData((prev) => ({ ...prev, [field]: value }));
+  };
 
-.messageBotAvatar {
-  width: 1.875rem;
-  height: 1.875rem;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #0284c7, #0ea5e9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
-  margin-right: 0.5rem;
-  flex-shrink: 0;
-  margin-top: 0.125rem;
-}
+  const saveClinicData = async () => {
+    try {
+      setError("");
+      setSuccess("");
 
-.message {
-  max-width: 75%;
-  padding: 0.625rem 0.875rem;
-  border-radius: 1.125rem;
-  font-size: 0.84375rem;
-  line-height: 1.6;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/clinic_config?id=eq.${clinicData.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            apikey: SUPABASE_KEY,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal",
+          },
+          body: JSON.stringify({
+            clinic_name: clinicData.clinic_name,
+            assistant_name: clinicData.assistant_name,
+            address: clinicData.address,
+            business_hours: clinicData.business_hours,
+            phone: clinicData.phone,
+          }),
+        }
+      );
 
-.botMessage {
-  background: #243556;
-  color: #e2e8f0;
-  border-radius: 0.25rem 0.75rem 0.75rem 0.75rem;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
-}
+      if (!res.ok) throw new Error("Failed to save clinic data");
 
-.userMessage {
-  background: linear-gradient(135deg, #0284c7, #0ea5e9);
-  color: white;
-  border-radius: 0.75rem 0.25rem 0.75rem 0.75rem;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
-}
+      setSuccess("บันทึกข้อมูลสำเร็จ!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError("เกิดข้อผิดพลาด กรุณาลองใหม่");
+    }
+  };
 
-/* Typing dots */
-.typingDots {
-  display: flex;
-  gap: 0.25rem;
-  align-items: center;
-  padding: 0.25rem 0;
-}
+  const addService = async () => {
+    if (!newService.service_name || !newService.price) {
+      setError("กรุณากรอกข้อมูลให้ครบ");
+      return;
+    }
 
-.dot {
-  width: 0.4375rem;
-  height: 0.4375rem;
-  border-radius: 50%;
-  background: #0ea5e9;
-  animation: bounce 1.2s infinite;
-  opacity: 0.4;
-}
+    try {
+      setError("");
 
-@keyframes bounce {
-  0%, 60%, 100% {
-    transform: translateY(0);
-    opacity: 0.4;
-  }
-  30% {
-    transform: translateY(-0.375rem);
-    opacity: 1;
-  }
-}
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clinic_services`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_KEY,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation",
+        },
+        body: JSON.stringify({
+          service_name: newService.service_name,
+          price: newService.price,
+          display_order: services.length + 1,
+        }),
+      });
 
-@keyframes fadeSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(0.625rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+      if (!res.ok) throw new Error("Failed to add service");
 
-/* Chips */
-.chipsContainer {
-  padding: 0 1rem 0.625rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-  background: #1a2342;
-}
+      const newData = await res.json();
+      setServices([...services, newData[0]]);
+      setNewService({ service_name: "", price: "" });
+      setSuccess("เพิ่มบริการสำเร็จ!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError("เกิดข้อผิดพลาด กรุณาลองใหม่");
+    }
+  };
 
-.chip {
-  background: #1e3a5f;
-  border: 1px solid #2d5a8c;
-  color: #7dd3fc;
-  border-radius: 1.25rem;
-  padding: 0.3125rem 0.75rem;
-  font-size: 0.75rem;
-  cursor: pointer;
-  font-family: inherit;
-  font-weight: 500;
-  transition: background-color 0.15s, border-color 0.15s;
-}
+  const deleteService = async (id) => {
+    if (!confirm("ยืนยันการลบ?")) return;
 
-.chip:hover {
-  background: #2d5a8c;
-  border-color: #3d7aad;
-}
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/clinic_services?id=eq.${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            apikey: SUPABASE_KEY,
+            "Prefer": "return=minimal",
+          },
+        }
+      );
 
-.chip:active {
-  transform: scale(0.96);
-}
+      if (!res.ok) throw new Error("Failed to delete service");
 
-/* Input */
-.inputRow {
-  padding: 0.625rem 0.875rem 0.875rem;
-  border-top: 1px solid #243556;
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-end;
-  background: #1a2342;
-}
+      setServices(services.filter((s) => s.id !== id));
+      setSuccess("ลบบริการสำเร็จ!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError("เกิดข้อผิดพลาด กรุณาลองใหม่");
+    }
+  };
 
-.input {
-  flex: 1;
-  border: 1.5px solid #334155;
-  border-radius: 0.875rem;
-  padding: 0.5625rem 0.875rem;
-  font-size: 0.84375rem;
-  font-family: inherit;
-  resize: none;
-  background: #243556;
-  color: #e2e8f0;
-  outline: none;
-  line-height: 1.5;
-  transition: border-color 0.2s;
-  max-height: 7.5rem;
-}
+  if (loading) return <div className={styles.container}>กำลังโหลด...</div>;
 
-.input:focus {
-  border-color: #0ea5e9;
-}
+  return (
+    <div className={styles.container}>
+      <div className={styles.panel}>
+        <h1>⚙️ Admin Panel - สไมล์เพลส</h1>
 
-.input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+        {error && <div className={styles.error}>{error}</div>}
+        {success && <div className={styles.success}>{success}</div>}
 
-/* Send button */
-.sendButton {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.5rem;
-  background: linear-gradient(135deg, #0284c7, #0ea5e9);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
-}
+        {/* Clinic Info Section */}
+        <section className={styles.section}>
+          <h2>ข้อมูลคลินิก</h2>
 
-.sendButton:hover {
-  opacity: 0.9;
-}
+          <div className={styles.formGroup}>
+            <label>ชื่อคลินิก</label>
+            <input
+              type="text"
+              value={clinicData.clinic_name || ""}
+              onChange={(e) => handleClinicDataChange("clinic_name", e.target.value)}
+              className={styles.input}
+            />
+          </div>
 
-.sendButton:active {
-  transform: scale(0.96);
-}
+          <div className={styles.formGroup}>
+            <label>ชื่อผู้ช่วย AI</label>
+            <input
+              type="text"
+              value={clinicData.assistant_name || ""}
+              onChange={(e) => handleClinicDataChange("assistant_name", e.target.value)}
+              className={styles.input}
+            />
+          </div>
 
-.sendButtonDisabled {
-  background: #334155;
-  cursor: not-allowed;
-  box-shadow: none;
-  opacity: 0.6;
-}
+          <div className={styles.formGroup}>
+            <label>ที่อยู่</label>
+            <textarea
+              value={clinicData.address || ""}
+              onChange={(e) => handleClinicDataChange("address", e.target.value)}
+              className={styles.textarea}
+              rows={3}
+            />
+          </div>
 
-.sendButtonDisabled:hover {
-  opacity: 0.6;
-}
+          <div className={styles.formGroup}>
+            <label>เวลาทำการ</label>
+            <textarea
+              value={clinicData.business_hours || ""}
+              onChange={(e) => handleClinicDataChange("business_hours", e.target.value)}
+              className={styles.textarea}
+              rows={2}
+            />
+          </div>
 
-/* Scrollbar */
-.messagesContainer::-webkit-scrollbar {
-  width: 0.25rem;
-}
+          <div className={styles.formGroup}>
+            <label>เบอร์โทรศัพท์</label>
+            <input
+              type="text"
+              value={clinicData.phone || ""}
+              onChange={(e) => handleClinicDataChange("phone", e.target.value)}
+              className={styles.input}
+            />
+          </div>
 
-.messagesContainer::-webkit-scrollbar-track {
-  background: transparent;
-}
+          <button onClick={saveClinicData} className={styles.btnPrimary}>
+            💾 บันทึกข้อมูลคลินิก
+          </button>
+        </section>
 
-.messagesContainer::-webkit-scrollbar-thumb {
-  background: #1e3a5f;
-  border-radius: 99px;
-}
+        {/* Services Section */}
+        <section className={styles.section}>
+          <h2>บริการและราคา</h2>
 
-/* Responsive */
-@media (max-width: 600px) {
-  .container {
-    padding: 1rem;
-  }
+          <div className={styles.servicesList}>
+            {services.map((service) => (
+              <div key={service.id} className={styles.serviceItem}>
+                <div>
+                  <div className={styles.serviceName}>{service.service_name}</div>
+                  <div className={styles.servicePrice}>{service.price}</div>
+                </div>
+                <button
+                  onClick={() => deleteService(service.id)}
+                  className={styles.btnDanger}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
 
-  .widget {
-    border-radius: 1rem;
-  }
+          <div className={styles.addService}>
+            <h3>เพิ่มบริการใหม่</h3>
+            <div className={styles.formGroup}>
+              <label>ชื่อบริการ</label>
+              <input
+                type="text"
+                value={newService.service_name}
+                onChange={(e) =>
+                  setNewService({ ...newService, service_name: e.target.value })
+                }
+                className={styles.input}
+                placeholder="เช่น ขูดหินปูน"
+              />
+            </div>
 
-  .message {
-    max-width: 85%;
-  }
+            <div className={styles.formGroup}>
+              <label>ราคา</label>
+              <input
+                type="text"
+                value={newService.price}
+                onChange={(e) =>
+                  setNewService({ ...newService, price: e.target.value })
+                }
+                className={styles.input}
+                placeholder="เช่น 800 บาท"
+              />
+            </div>
+
+            <button onClick={addService} className={styles.btnSuccess}>
+              ➕ เพิ่มบริการ
+            </button>
+          </div>
+        </section>
+
+        <div className={styles.footer}>
+          💡 หลังจากแก้ไข chatbot จะอัปเดตอัตโนมัติใน 5 นาที
+        </div>
+      </div>
+    </div>
+  );
 }
